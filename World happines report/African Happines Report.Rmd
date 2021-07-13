@@ -1,0 +1,391 @@
+---
+title: "African Happiness Report 2021 "
+author: "Roqeeb Olaniyi"
+date:  '`r format(Sys.Date(), "%B %d, %Y")`'
+output: html_document
+code_folding: hide
+---
+
+## Objective of analysis
+African countries are known to be underdeveloped when compared to the rest of the world. Due to the countries been 
+underdeveloped, the quality of life in these couuntries are poor. Recently development aid said that the total 
+number of poor people in Africa is about 490 million or about 36% of the whole population in Africa. 
+The happines report done on these countries in Africa will be to compare each countries based on some of the 
+parameters available in the dataset. 
+
+Six parameters will be looked at and will be accompanied by visualizations
+
+The parameters are:
+
+* Economic production
+* Social support
+* Life expectancy
+* Freedom
+* Corruption
+* Generosity
+
+
+We start by loading the libraries to use for the analysis
+
+```{r, message = FALSE}
+library(tidyverse)
+library(plotly)
+```
+Here we load the files to be used. The countries file was loaded beacuse it is necessary for the production of the maps
+and the data it contains were lacking from the original dataset.
+
+```{r, result = 'hide'}
+data <- read_csv('C:/Users/ayoro/Desktop/Datasci/Case studies/World happines report/world-happiness-report-2021.csv')
+countries <- read_csv('C:/Users/ayoro/Desktop/Datasci/Case studies/World happines report/Countries and code.csv')
+```
+
+We begin exploring the dataset to get an idea of how the columns are structured
+
+```{r, echo=FALSE}
+head(data)
+```
+
+```{r, echo=FALSE}
+glimpse(data)
+```
+From the information we have above, we will be dropping columns that will not be used in the analysis
+
+```{r, echo=FALSE}
+data <- data %>%
+select('Country name', 'Regional indicator', 'Logged GDP per capita', 'Social support'
+       ,'Healthy life expectancy','Freedom to make life choices','Generosity', 'Perceptions of corruption' )
+```
+There are seven continents in the world, but the countries in the dataset have been divided into regions.
+All the regions present in the data are present below. 
+
+```{r, echo=FALSE}
+data %>%
+select("Regional indicator") %>%
+distinct()
+```
+
+The names of the colums were changed from the original to better fit the analysis 
+
+```{r, echo=FALSE}
+data <- data %>%
+rename(country =  'Country name',
+        region = 'Regional indicator',
+        gdp_per_capita = 'Logged GDP per capita',
+        social_support = 'Social support',
+        life_expectancy = 'Healthy life expectancy',
+        freedom = 'Freedom to make life choices',
+        generosity = 'Generosity',
+        corruption = 'Perceptions of corruption'
+        )
+```
+The next step done was to join the codes present in the countries table to the data that we already have. 
+Inner join was used to combine this information.
+
+```{r, echo=FALSE}
+data <- data %>%
+inner_join(countries, by = 'country')
+```
+
+Since we are looking at african countries only, we select for any country that has **Sub-Saharan Africa** has its region
+
+
+```{r, echo=FALSE}
+data %>%
+filter(region == 'Sub-Saharan Africa')
+```
+
+The african countries present were filtered for first and the result does not contian all information about the 56 african countries
+To progress further, the column containing Middle East and North African countries was checked for 
+presence of african countries
+
+```{r, echo=FALSE}
+data %>%
+filter(region == 'Middle East and North Africa')
+```
+
+From the result above, there are some african countries present in column and the regional classification of these countries was changed. 
+
+```{r, echo=FALSE}
+data <- data %>%
+mutate(region = replace(region, country == 'Egypt'| country == 'Tunisia'| country == 'Algeria'| 
+                        country == 'Morocco' | country == 'Libya', 'Sub-Saharan Africa' )) 
+```
+
+Now we should have all african countries in the data set classisified with the **Sub-Saharan Africa** classification
+```{r, echo=FALSE}
+data %>%
+filter(region == 'Sub-Saharan Africa')
+```
+
+Following the change of the countries, it was observed that the dataset does not contain all the african countries.
+This is a limitation in our analysis as it will not represent the whole of the continent.
+
+
+The **Sub-Saharan Africa** name was changed to **Africa** and the **Middle East and North Africa** name was changed to 'Middle East'
+
+```{r, echo=FALSE}
+data <- data %>%
+mutate(region = replace(region, region == 'Sub-Saharan Africa', 'Africa' )) %>%
+mutate(region = replace(region, region == 'Middle East and North Africa', 'Middle East'))
+```
+
+
+Getting a view of how many countries per region 
+
+```{r, echo=FALSE}
+data %>%
+ggplot(aes(x = region, fill = region)) +
+geom_bar() +
+labs(x = 'Region', y = 'Count') +
+theme(axis.text.x = element_text(angle = 90))
+```
+
+
+This is where we begin the analysis of the data. We will perform analysis based on each african 
+countries and the african region when compared to the other regions.
+
+```{r, echo=FALSE}
+african_data <- data %>%
+filter(region == 'Africa')
+```
+### Economic production
+The map below shows the gdp per capita of each of the african countries present.
+Countries with a white colour in the map are left blank due to lack of information about them.
+
+```{r, echo=FALSE}
+economic_graph <- african_data %>%
+mutate(hover = paste0(country,'<br>','Gdp per capita: ',gdp_per_capita)) %>%
+plot_geo() %>%
+add_trace(locations = ~code,
+          z = ~gdp_per_capita,
+          color = ~gdp_per_capita,
+          text = ~hover,
+          hoverinfo = 'text') %>%
+layout(geo = list(scope ='africa'), 
+       font = list(family = 'calibri'),
+       title = 'Gdp Per Capita \n of African Countries') %>%
+config(displayModeBar = FALSE)
+
+economic_graph
+```
+Then we take a look at the top countries in Africa with the highest and lowest gdp_per_capita
+
+Top 5 countries with the highest gdp per capita
+```{r, echo=FALSE}
+african_data %>%
+arrange(desc(gdp_per_capita)) %>%
+select(country) %>%
+head(5)
+```
+Countries with the lowest gdp per capita in africa
+
+```{r, echo=FALSE}
+african_data %>%
+arrange(desc(gdp_per_capita)) %>%
+select(country) %>%
+tail(5)
+```
+
+## Social support
+Social support means having friends and other people, including family,
+to turn to in times of need or crisis to give you a broader focus and positive self-image.
+Here we look at how each of these african countries compare to each other in terms of social support.
+
+```{r, echo=FALSE}
+social_support <- african_data %>%
+mutate(hover = paste0(country,'<br>','Social Support: ',social_support)) %>%
+plot_geo() %>%
+add_trace(locations = ~code,
+          z = ~social_support,
+          color = ~social_support,
+          colorscale = 'Portland',
+          text = ~hover,
+          hoverinfo = 'text') %>%
+layout(geo = list(scope ='africa'), 
+       font = list(family = 'calibri'),
+       title = 'Social support index \n for African Countries') %>%
+config(displayModeBar = FALSE)
+
+social_support
+```
+Now we check the countries in the top and button 5 in terms of social support
+
+Top 5 countries in social support
+
+```{r, echo=FALSE}
+african_data %>%
+arrange(desc(social_support)) %>%
+select(country) %>%
+head(5)
+```
+
+Countries with the least social support
+
+```{r, echo=FALSE}
+african_data %>%
+arrange(desc(social_support)) %>%
+select(country) %>%
+tail(5)
+```
+
+## Life Expectancy
+
+Life expectancy is a statistical measure of the average time an organism is expected to live,
+based on the year of its birth, its current age, and other demographic factors including biological sex.
+The life expectancy of the african countries are illustrated below
+```{r, echo=FALSE}
+life_expectancy <- african_data %>%
+mutate(hover = paste0(country,'<br>','Life expectancy: ',life_expectancy)) %>%
+plot_geo() %>%
+add_trace(locations = ~code,
+          z = ~life_expectancy,
+          color = ~life_expectancy,
+          colorscale = 'Cividis',
+          text = ~hover,
+          hoverinfo = 'text') %>%
+layout(geo = list(scope ='africa'), 
+       font = list(family = 'calibri'),
+       title = 'Social support index \n for African Countries') %>%
+config(displayModeBar = FALSE)
+
+life_expectancy
+```
+The top 5 african countries with the highest life expectancy
+
+```{r, echo=FALSE}
+african_data %>%
+arrange(desc(life_expectancy)) %>%
+select(country) %>%
+head(5)
+```
+The buttom 5 countries in Africa with the least life expectancy
+
+```{r, echo=FALSE}
+african_data %>%
+arrange(life_expectancy) %>%
+select(country) %>%
+head(5)
+```
+
+## Freedom
+
+Freedom, generally, is having the ability to act or change without constraint. The map below shows
+the freedom level experienced by the citizens of each country in Africa
+```{r, echo=FALSE}
+freedom <- african_data %>%
+mutate(hover = paste0(country,'<br>','Freedom: ',freedom)) %>%
+plot_geo() %>%
+add_trace(locations = ~code,
+          z = ~freedom,
+          color = ~freedom,
+          colorscale = 'YlOrRd',
+          text = ~hover,
+          hoverinfo = 'text') %>%
+layout(geo = list(scope ='africa'), 
+       font = list(family = 'calibri'),
+       title = 'Freedom level \n in African Countries') %>%
+config(displayModeBar = FALSE)
+
+freedom
+```
+The top 5 countries in Africa with the highest freedom ratings are
+
+```{r, echo=FALSE}
+african_data %>%
+arrange(desc(freedom)) %>%
+select(country) %>%
+head(5)
+```
+The buttom 5 countries in Africa with the least freedom are
+
+```{r, echo=FALSE}
+african_data %>%
+arrange(freedom) %>%
+select(country) %>%
+head(5)
+```
+
+## Corruption
+Corruption, as defined by the World Bank, is a form of dishonesty or criminal 
+offense undertaken by a person or organization entrusted with a position of 
+authority, to acquire illicit benefit or abuse power for private gain. 
+African countries are particularly known to have corrupt leaders which can be 
+associated with the mis-management of public funds and eventually under development
+
+The map below is that of how african countries compare to one another in terms of corruption
+
+```{r, echo=FALSE}
+corruption <- african_data %>%
+mutate(hover = paste0(country,'<br>','Corruption: ',corruption)) %>%
+plot_geo() %>%
+add_trace(locations = ~code,
+          z = ~corruption,
+          color = ~corruption,
+          colorscale = 'Bluered',
+          text = ~hover,
+          hoverinfo = 'test') %>%
+layout(geo = list(scope ='africa'), 
+       font = list(family = 'calibri'),
+       title = 'Corruption level \n in African Countries') %>%
+config(displayModeBar = FALSE)
+
+corruption
+```
+The 5 most corrupt countries in Africa are listed below
+
+```{r, echo=FALSE}
+african_data %>%
+arrange(desc(corruption)) %>%
+select(country) %>%
+head(5)
+```
+The least corrupt companies are listed below
+
+```{r, echo=FALSE}
+african_data %>%
+arrange(freedom) %>%
+select(country) %>%
+head(5)
+```
+Generosity is the virtue of being liberal in giving, often as gifts. 
+Generosity is regarded as a virtue by various world religions,
+and is often celebrated in cultural and religious ceremonies.
+
+We take a look at how the citizens of these african countries compare to one another in terms of their generosity
+
+```{r, echo=FALSE}
+generosity <- african_data %>%
+mutate(hover = paste0(country,'<br>','Generosity: ',generosity)) %>%
+plot_geo() %>%
+add_trace(locations = ~code,
+          z = ~generosity,
+          color = ~generosity,
+          colorscale ='YlGnBu',
+          text = ~hover,
+          hoverinfo = 'text') %>%
+layout(geo = list(scope ='africa'), 
+       font = list(family = 'calibri'),
+       title = 'Level of Generosity  \n in African Countries') %>%
+config(displayModeBar = FALSE)
+
+generosity
+```
+The 5 most generous countries in Africa are listed below
+
+```{r, echo=FALSE}
+african_data %>%
+arrange(desc(generosity)) %>%
+select(country) %>%
+head(5)
+```
+The least generous companies are listed below
+
+```{r, echo=FALSE}
+african_data %>%
+arrange(generosity) %>%
+select(country) %>%
+head(5)
+```
+
+From the results obtained from the different parameters, this analysis has allowed us to compare how different african countries rank between eachother. The limit to this analysis is that the dataset dosen't contain data for all african countries. Thus, this analysis is not a complete one as it dose not represent all of the countries. Nevertheless, we were still able to get some insight from the available data.
+
