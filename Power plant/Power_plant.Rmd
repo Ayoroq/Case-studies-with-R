@@ -1,0 +1,252 @@
+---
+title: "Power plant Descriptive Analysis"
+author: "Roqeeb Olaniyi"
+date: "14/06/2021"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Objective of analysis
+The power plant analysis was performed to answer the task questions below
+
+* What is the mean value of daily yield?
+* What is the total irradiation per day?
+* What is the max ambient and module temperature?
+* How many inverters are there for each plant?
+* What is the maximum/minimum amount of DC/AC Power generated in a time interval/day?
+* Which inverter (source_key) has produced maximum DC/AC power?
+* Rank the inverters based on the DC/AC power they produce
+* Is there any missing data?
+
+
+Loading the libraries to be used for the analysis
+```{r cars}
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+```
+Reading the csv files to be used for the analysis
+```{r}
+plant_1_gen <- read_csv("C:/Users/ayoro/Desktop/Datasci/Case studies/Power plant/Plant_1_Generation_Data.csv")
+plant_2_gen <- read_csv("C:/Users/ayoro/Desktop/Datasci/Case studies/Power plant/Plant_2_Generation_Data.csv")
+plant_1_weather <- read_csv("C:/Users/ayoro/Desktop/Datasci/Case studies/Power plant/Plant_1_Weather_Sensor_Data.csv")
+plant_2_weather <- read_csv("C:/Users/ayoro/Desktop/Datasci/Case studies/Power plant/Plant_2_Weather_Sensor_Data.csv")
+```
+
+Initial data exploration
+```{r}
+head(plant_1_gen)
+```
+
+```{r}
+glimpse(plant_1_gen)
+```
+
+```{r}
+glimpse(plant_2_gen)
+```
+
+```{r}
+head(plant_1_weather)
+```
+
+```{r}
+glimpse(plant_1_weather)
+```
+
+```{r}
+glimpse(plant_2_weather)
+```
+
+Checking for null or empty values in column of each dataframe
+```{r}
+colSums(is.na(plant_1_gen))
+colSums(is.na(plant_2_gen))
+colSums(is.na(plant_1_weather))
+colSums(is.na(plant_2_weather))
+```
+
+Creating a date column from the date_time column to make analysis better
+```{r}
+plant_1_gen <- plant_1_gen %>%
+                    mutate('date' = date(dmy_hm(DATE_TIME)))
+
+plant_2_gen <- plant_2_gen %>%
+                    mutate('date' = date(DATE_TIME))
+
+plant_1_weather <- plant_1_weather %>%
+                    mutate('date' = date(DATE_TIME))
+
+plant_2_weather <- plant_2_weather %>%
+                    mutate('date' = date(DATE_TIME))
+```
+
+Getting mean daily yield for each plant
+```{r}
+plant_1_gen %>%
+summarise(mean = mean(DAILY_YIELD))
+```
+
+```{r}
+plant_2_gen %>%
+summarise(mean = mean(DAILY_YIELD))
+```
+
+#### Total irradiation per day 
+
+Plant 1
+```{r}
+plant_1_weather %>%
+group_by(date) %>%
+summarise('Total_irradiation' = sum(IRRADIATION)) %>%
+  
+  ggplot(aes(x = date, y = Total_irradiation)) +
+  geom_line() +
+  labs(title = 'Irradiation per day', y = 'Total Irradiation', x = 'Date') +
+  theme_minimal() +
+  theme(panel.grid = element_blank())
+```
+
+Plant 2
+```{r}
+plant_2_weather %>%
+group_by(date) %>%
+summarise('Total_irradiation' = sum(IRRADIATION)) %>%
+  ggplot(aes(x = date, y = Total_irradiation)) +
+  geom_line() +
+  labs(title = 'Irradiation per day', y = 'Total Irradiation', x = 'Date') +
+  theme_minimal() +
+  theme(panel.grid = element_blank())
+```
+
+#### Max ambient and module temperature
+
+Plant 1 
+```{r}
+plant_1_weather %>%
+summarise('max_ambient_temp' = max(AMBIENT_TEMPERATURE), 'max_module_temp' = max(MODULE_TEMPERATURE))
+```
+
+Plant 2
+```{r}
+plant_2_weather %>%
+summarise('max_ambient_temp' = max(AMBIENT_TEMPERATURE), 'max_module_temp' = max(MODULE_TEMPERATURE))
+```
+
+#### Number of inverters
+
+Plant 1
+```{r}
+plant_1_gen %>%
+summarize('inverters' = n_distinct(SOURCE_KEY))
+```
+
+Plant 2
+```{r}
+plant_2_gen %>%
+summarize('inverters' = n_distinct(SOURCE_KEY))
+```
+
+#### Maximum and minumum AC/DC power per day
+
+Plant 1
+```{r}
+max_AC_DC_1 <- plant_1_gen %>%
+                group_by(date) %>%
+                summarise('max_AC' = max(AC_POWER),
+                'min_AC' = min(AC_POWER),
+                'max_DC' = max(DC_POWER),
+                'min_DC' = min(DC_POWER))
+
+max_AC_DC_1 %>%
+  ggplot(aes(x = date, y = max_AC)) +
+  geom_line() +
+  labs(title = 'Maximum AC power per day', x = 'Date', y = 'AC (kw)') +
+  theme_minimal() +
+  theme(panel.grid = element_blank())
+
+max_AC_DC_1 %>%
+  ggplot(aes(x = date, y = max_DC)) +
+  geom_line()  +
+  labs(title = 'Maximum DC power per day', x = 'Date', y = 'DC (kw)') +
+  theme_minimal() +
+  theme(panel.grid = element_blank())
+```
+
+Plant 2
+```{r}
+max_AC_DC_2 <- plant_2_gen %>%
+              group_by(date) %>%
+              summarise('max_AC' = max(AC_POWER),
+              'min_AC' = min(AC_POWER),
+              'max_DC' = max(DC_POWER),
+              'min_DC' = min(DC_POWER))
+max_AC_DC_2 %>%
+  ggplot(aes(x = date, y = max_AC)) +
+  geom_line() +
+  labs(title = 'Maximum AC power per day', x = 'Date', y = 'AC (kw)') +
+  theme_minimal() +
+  theme(panel.grid = element_blank())
+
+max_AC_DC_2 %>%
+  ggplot(aes(x = date, y = max_AC)) +
+  geom_line() +
+  labs(title = 'Maximum DC power per day', x = 'Date', y = 'DC (kw)') +
+  theme_minimal() +
+  theme(panel.grid = element_blank())
+```
+
+
+#### Inverter with the maximum AC/DC power output
+
+Plant 1
+```{r}
+plant_1_gen %>%
+filter(AC_POWER == max(AC_POWER) | DC_POWER == max(DC_POWER)) %>%
+select('max AC/DC inverter' = SOURCE_KEY)
+```
+
+Plant 2
+```{r}
+plant_2_gen %>%
+filter(AC_POWER == max(AC_POWER) | DC_POWER == max(DC_POWER)) %>%
+select('max AC/DC inverter' = SOURCE_KEY)
+```
+
+
+#### Inverter rank based on AC/DC power output
+
+Plant 1
+```{r}
+plant_1_gen %>%
+group_by(SOURCE_KEY) %>%
+select(SOURCE_KEY, AC_POWER, DC_POWER) %>%
+summarise('AC_POWER' = sum(AC_POWER), 'DC_POWER' = sum(DC_POWER)) %>%
+arrange(desc(AC_POWER, DC_POWER)) %>%
+mutate('rank' = dense_rank(interaction(desc(AC_POWER),desc(DC_POWER)))) %>%
+select(rank,SOURCE_KEY, AC_POWER, DC_POWER)
+```
+
+Plant 2
+```{r}
+plant_2_gen %>%
+group_by(SOURCE_KEY) %>%
+select(SOURCE_KEY, AC_POWER, DC_POWER) %>%
+summarise('AC_POWER' = sum(AC_POWER), 'DC_POWER' = sum(DC_POWER)) %>%
+arrange(desc(AC_POWER, DC_POWER)) %>%
+mutate('rank' = dense_rank(interaction(desc(AC_POWER),desc(DC_POWER)))) %>%
+select(rank,SOURCE_KEY, AC_POWER, DC_POWER)
+```
+
+
+
+
+
+
+
+
+
+
+
