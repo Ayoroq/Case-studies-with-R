@@ -58,11 +58,6 @@ review <- html_obj %>%
           html_text()
 ```
 
-```{r}
-usernames <- html_obj %>% 
-  html_elements(".display-name-link") %>% 
-  html_text()
-```
 
 ```{r}
 ratings <- html_obj %>% 
@@ -99,7 +94,6 @@ cbind_dif <- function(x = list()){
 
 ```{r}
 review_data <- cbind_dif(list( date = review_date,
-  username = usernames,
   title = review_title,
   rating = ratings,
   review = review))
@@ -110,12 +104,6 @@ review_data <- cbind_dif(list( date = review_date,
 review_data$title <- review_data$title %>%
   str_replace("/n","") %>% 
   str_trim()
-```
-
-```{r}
-review_data$username <- review_data$username %>% 
-  str_trim() %>% 
-  str_to_lower()
 ```
 
 
