@@ -1,0 +1,155 @@
+---
+title: "IMDB web scrapping"
+author: "Roqeeb Olaniyi"
+date: "23/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rvest)
+library(RSelenium)
+library(lubridate)
+library(tidytext)
+data("stop_words")
+library(textcat)
+```
+
+```{r}
+rs <- rsDriver(browser = c("chrome"),chromever = "95.0.4638.17")
+remDR <- rs[["client"]]
+```
+
+
+```{r}
+url <- "https://www.imdb.com/title/tt0944947/reviews?ref_=tt_ql_3"
+remDR$navigate(url)
+```
+
+```{r}
+load <- unlist(remDR$findElement("class","ipl-load-more__button")$isElementDisplayed())
+
+while (load == TRUE){
+  remDR$findElement("class","ipl-load-more__button")$clickElement()
+  Sys.sleep(3)
+  load2 <- unlist(remDR$findElement("class","ipl-load-more__button")$isElementDisplayed())
+  load <- load2
+}
+
+```
+
+```{r}
+##Scrape in HTML Objects
+html_obj <- remDR$getPageSource()[[1]] %>% read_html()
+```
+
+```{r}
+#Shut Down Client and Server
+remDR$close()
+rs$server$stop()
+system("taskkill /im java.exe /f", intern=FALSE, ignore.stdout=FALSE)
+```
+
+
+```{r}
+review <- html_obj %>% 
+          html_elements(".text") %>% 
+          html_text()
+```
+
+```{r}
+usernames <- html_obj %>% 
+  html_elements(".display-name-link") %>% 
+  html_text()
+```
+
+```{r}
+ratings <- html_obj %>% 
+  html_elements(".rating-other-user-rating") %>% 
+  html_text()
+```
+
+```{r}
+review_date <- html_obj %>% 
+  html_elements(".review-date") %>% 
+  html_text() 
+```
+
+```{r}
+review_title <- html_obj %>% 
+  html_elements(".title") %>% 
+  html_text()
+```
+
+```{r}
+cbind_dif <- function(x = list()){
+    # Find max length
+    max_length <- max(unlist(lapply(x, length)))
+
+    # Set length of each vector as
+    res <- lapply(x, function(x){
+        length(x) <- max_length
+        return(x)
+    })
+
+   return(as_tibble(res))
+}
+```
+
+```{r}
+review_data <- cbind_dif(list( date = review_date,
+  username = usernames,
+  title = review_title,
+  rating = ratings,
+  review = review))
+```
+
+
+```{r}
+review_data$title <- review_data$title %>%
+  str_replace("/n","") %>% 
+  str_trim()
+```
+
+```{r}
+review_data$username <- review_data$username %>% 
+  str_trim() %>% 
+  str_to_lower()
+```
+
+
+```{r}
+review_data$rating <- review_data$rating %>% 
+  str_replace("/n|/10","") %>% 
+  str_trim() %>% 
+  as.integer()
+```
+
+```{r}
+review_data$review <- review_data$review %>% 
+  str_replace("/n|\n"," ") %>% 
+  str_replace("-|--",",") %>% 
+  str_trim() %>% 
+  str_to_lower()
+```
+
+```{r}
+review_data$date <- review_data$date %>% 
+  str_trim() %>% 
+  dmy()
+```
+
+```{r}
+review_data$rating[is.na(review_data$rating)] <- ceiling(mean(review_data$rating, na.rm = TRUE))
+
+
+```
+
+```{r}
+review_data <- review_data[!rowSums(is.na(review_data)) > 0, ]
+```
+
+```{r}
+write_csv(review_data,"C:/Users/ayoro/OneDrive/data-analytics-and-programming/Case-studies-with-R/Imdb review scrape/review_data.csv")
+```
